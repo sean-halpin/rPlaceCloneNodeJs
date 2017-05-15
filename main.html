@@ -1,0 +1,113 @@
+<!DOCTYPE html>
+<html>
+<head>
+<style>
+canvas {
+    border: 3px solid #ccc;
+    margin: 30px;
+}
+</style>
+</head>
+<body>
+
+<h1>Simple r/place Clone in node.js</h1>
+<p>Click the canvas.</p>
+
+<canvas id="myCanvas" width="400" height="400" />
+
+</body>
+<script>
+
+// Get our canvas element, context and it's offsets
+var canvas = document.getElementById('myCanvas'),
+    elemLeft = canvas.offsetLeft,
+    elemTop = canvas.offsetTop,
+    context = canvas.getContext('2d'),
+    elements = [];
+
+// Add event listener for `click` events.
+canvas.addEventListener('click', function(event) {
+	var x;
+	var y;
+	if (event.pageX || event.pageY) { 
+	  x = event.pageX;
+	  y = event.pageY;
+	}
+	else { 
+	  x = event.clientX + document.body.scrollLeft + document.documentElement.scrollLeft; 
+	  y = event.clientY + document.body.scrollTop + document.documentElement.scrollTop; 
+	} 
+	x -= canvas.offsetLeft;
+	y -= canvas.offsetTop;
+    console.log(x, y); //log the x and y coords
+    elements.forEach(function(element) {
+        if (y > element.top 
+			&& y < element.top + element.height 
+			&& x > element.left 
+			&& x < element.left + element.width) {
+				//alert('clicked an element, posting to server');
+				postDataToNodeJs(x,y,'FFFFFF');
+		}
+    });
+	getDataFromNodeJs();
+}, false);
+
+function postDataToNodeJs(x,y,rgb){
+	var xhr = new XMLHttpRequest();
+	xhr.open("POST", "http://localhost:8081/place", true);
+	xhr.setRequestHeader('Content-Type', 'application/json');
+	xhr.send(JSON.stringify({ 
+		x:x,
+		y:y,
+		rgb,rgb
+}));
+}
+
+function getDataFromNodeJs(){
+	var xhr = new XMLHttpRequest();
+
+	xhr.onreadystatechange = function () {
+		if (this.readyState != 4) return;
+
+		if (this.status == 200) {
+			var data = JSON.parse(this.responseText);
+			console.log(data);
+			data.forEach(function(datum) {
+				//console.log(datum);
+				elements.push({
+					colour: '#'+datum.rgb,
+					width: 5,
+					height: 5,
+					top: datum.y,
+					left: datum.x
+				});
+			});
+			elements.forEach(function(element) {
+				context.fillStyle = element.colour;
+				context.fillRect(element.left, element.top, element.width, element.height);
+			});
+		}
+	};
+
+	xhr.open('GET', "http://localhost:8081/canvas", true);
+	console.log("GET /canvas");
+	xhr.send();
+}
+
+// Add base canvas element.
+elements.push({
+    colour: '#0101A1',
+    width: 350,
+    height: 300,
+    top: 20,
+    left: 15
+});
+
+// Render elements.
+elements.forEach(function(element) {
+    context.fillStyle = element.colour;
+    context.fillRect(element.left, element.top, element.width, element.height);
+});
+
+</script>
+</html>
